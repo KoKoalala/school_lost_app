@@ -4,7 +4,7 @@ import pandas as pd
 from datetime import datetime, timedelta
 
 # 1. 앱 페이지 설정
-st.set_page_config(page_title="학교 분실물 센터 v3", page_icon="🔍", layout="centered")
+st.set_page_config(page_title="학교 분실물 센터(얘들아 물건 잃어버리지 말자!)", page_icon="🔍", layout="centered")
 st.title("마산제일고등학교 통합 분실물 센터")
 
 # 2. SQLite 데이터베이스 초기화 및 자동 마이그레이션 함수
