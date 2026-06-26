@@ -5,7 +5,7 @@ from datetime import datetime
 
 # 1. 앱 페이지 설정
 st.set_page_config(page_title="학교 분실물 센터 v2", page_icon="🔍", layout="centered")
-st.title("🏫 우리 학교 통합 분실물 센터 (공동 DB형)")
+st.title("🏫 마산제일고등학교 분실물 관리")
 st.write("데이터베이스 연동으로 새로고침해도 데이터가 영구히 유지됩니다.")
 
 # 2. SQLite 데이터베이스 초기화 함수
