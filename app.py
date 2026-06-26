@@ -5,13 +5,14 @@ from datetime import datetime, timedelta
 
 # 1. 앱 페이지 설정
 st.set_page_config(page_title="학교 분실물 센터 v3", page_icon="🔍", layout="centered")
-st.title("마산제일고등학교 분실물 관리")
+st.title("🏫 우리 학교 통합 분실물 센터")
+st.write("데이터베이스 연동으로 새로고침해도 데이터가 영구히 유지됩니다.")
 
-# 2. SQLite 데이터베이스 초기화 함수 (status 컬럼 추가)
+# 2. SQLite 데이터베이스 초기화 및 자동 마이그레이션 함수
 def init_db():
     conn = sqlite3.connect("lost_and_found.db")
     cursor = conn.cursor()
-    # status 컬럼을 추가하여 'active'(찾는중) 또는 'found'(찾음) 상태를 기록합니다.
+    # 기본 테이블 생성
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS lost_items (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -22,16 +23,23 @@ def init_db():
             status TEXT DEFAULT 'active'
         )
     """)
+    
+    # ★ [구조 업그레이드 코드 추가] 기존 구버전 DB가 있을 경우 status 컬럼을 강제로 추가
+    try:
+        cursor.execute("ALTER TABLE lost_items ADD COLUMN status TEXT DEFAULT 'active'")
+    except sqlite3.OperationalError:
+        # 이미 status 컬럼이 존재하는 경우 발생하는 에러는 안전하게 무시합니다.
+        pass
+        
     conn.commit()
     conn.close()
 
-# 앱 실행 시 자동으로 DB 초기화
+# 앱 실행 시 자동으로 DB 초기화 및 구조 업데이트
 init_db()
 
 # 데이터베이스 조회 함수 (최근 3일 이내 완료된 것까지만 가져오거나 active인 것 가져오기)
 def get_visible_items():
     conn = sqlite3.connect("lost_and_found.db")
-    # 모든 데이터를 가져와서 Python에서 날짜 비교 후 필터링합니다.
     df = pd.read_sql_query("SELECT * FROM lost_items ORDER BY id DESC", conn)
     conn.close()
     
@@ -43,17 +51,17 @@ def get_visible_items():
     
     valid_indices = []
     for idx, row in df.iterrows():
-        # 'active' 상태면 무조건 보여줌
-        if row['status'] == 'active':
+        # 'status' 컬럼 안전장치 포함하여 필터링
+        current_status = row.get('status', 'active')
+        
+        if current_status == 'active':
             valid_indices.append(idx)
-        # 'found' 상태면 3일이 안 지났을 때만 보여줌
-        elif row['status'] == 'found':
+        elif current_status == 'found':
             try:
                 item_date = datetime.strptime(row['date_time'], "%Y-%m-%d %H:%M")
                 if item_date >= three_days_ago:
                     valid_indices.append(idx)
             except:
-                # 날짜 형식이 안 맞으면 안전하게 포함시킴
                 valid_indices.append(idx)
                 
     return df.loc[valid_indices]
@@ -69,7 +77,7 @@ def insert_item(item_name, location, description):
     conn.commit()
     conn.close()
 
-# ★ 진짜 삭제 대신 'found' 상태로 업데이트하는 함수 (논리 삭제)
+# 진짜 삭제 대신 'found' 상태로 업데이트하는 함수 (논리 삭제)
 def update_to_found(item_id):
     conn = sqlite3.connect("lost_and_found.db")
     cursor = conn.cursor()
@@ -95,14 +103,13 @@ with tab2:
                 st.success(f"🎉 '{item_name}'이(가) 중앙 데이터베이스에 안전하게 기록되었습니다!")
                 st.rerun()
             else:
-                st.error("물품명 and 습득 장소는 필수 입력 사항입니다.")
+                st.error("물품명과 습득 장소는 필수 입력 사항입니다.")
 
 # [분실물 찾기 / 현황] 탭 구현
 with tab1:
     st.subheader("📋 실시간 분실물 목록 조회")
     search_query = st.text_input("🔍 찾으시는 물품명을 입력하세요 (실시간 필터링)")
     
-    # 조건에 맞는 데이터만 불러오기
     df = get_visible_items()
     
     if not df.empty:
@@ -113,8 +120,8 @@ with tab1:
             
         if not filtered_df.empty:
             for idx, row in filtered_df.iterrows():
-                # 만약 이미 찾은 물건이라면 줄을 긋고 표기 (~물품명~)
-                is_found = row['status'] == 'found'
+                current_status = row.get('status', 'active')
+                is_found = current_status == 'found'
                 title_text = f"📦 {row['item_name']} - {row['location']} ({row['date_time']})"
                 
                 if is_found:
@@ -127,7 +134,6 @@ with tab1:
                     st.write(f"**습득 장소:** {row['location']}")
                     st.write(f"**상세 특징:** {row['description'] if row['description'] else '특징 없음'}")
                     
-                    # 아직 찾는 중(active)일 때만 완료 버튼 보여주기
                     if not is_found:
                         if st.button(f"✅ 주인 찾음 (줄표시 및 3일 뒤 자동삭제)", key=f"found_{row['id']}"):
                             update_to_found(row['id'])
@@ -136,4 +142,4 @@ with tab1:
         else:
             st.info("검색 조건에 일치하는 분실물이 없습니다.")
     else:
-        st.info("현재 등록된 분실물이 없습니다.")
+        st.info("현재 등록된 분실물이 없습니다. 깨끗한 학교 환경! 👏")
