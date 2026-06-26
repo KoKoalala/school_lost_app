@@ -5,8 +5,7 @@ from datetime import datetime, timedelta
 
 # 1. 앱 페이지 설정
 st.set_page_config(page_title="학교 분실물 센터 v3", page_icon="🔍", layout="centered")
-st.title("🏫 우리 학교 통합 분실물 센터")
-st.write("데이터베이스 연동으로 새로고침해도 데이터가 영구히 유지됩니다.")
+st.title("마산제일고등학교 통합 분실물 센터")
 
 # 2. SQLite 데이터베이스 초기화 및 자동 마이그레이션 함수
 def init_db():
@@ -142,4 +141,4 @@ with tab1:
         else:
             st.info("검색 조건에 일치하는 분실물이 없습니다.")
     else:
-        st.info("현재 등록된 분실물이 없습니다. 깨끗한 학교 환경! 👏")
+        st.info("현재 등록된 분실물이 없습니다.")
